@@ -44,6 +44,20 @@ Suggested frontend env:
 NEXT_PUBLIC_API_BASE_URL=http://localhost:18081/api/v1
 ```
 
+## Database admin
+
+Open Adminer at `http://localhost:18083` to manage PostgreSQL.
+
+Use these login values:
+
+```text
+System: PostgreSQL
+Server: postgres
+Username: postgres
+Password: postgres
+Database: zedsellauto
+```
+
 ## Key endpoints
 
 - `POST /api/v1/auth/signup`
