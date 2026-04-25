@@ -1,17 +1,41 @@
-version: "3.9"
-
 services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: zedsellauto-api:local
+    container_name: zedsellauto-api
+    env_file:
+      - .env
+    environment:
+      PORT: ${PORT:-18081}
+      POSTGRES_HOST: postgres
+      REDIS_ADDR: redis:6379
+    ports:
+      - "${PORT:-18081}:${PORT:-18081}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
   postgres:
     image: postgres:16
     container_name: zedsellauto-postgres
     environment:
-      POSTGRES_DB: zedsellauto
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ${POSTGRES_DB:-zedsellauto}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-zedsellauto}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   redis:
     image: redis:7
@@ -21,6 +45,11 @@ services:
     command: redis-server --appendonly yes
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
 volumes:
   postgres_data:

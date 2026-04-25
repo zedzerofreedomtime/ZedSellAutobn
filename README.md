@@ -23,8 +23,13 @@ Go Gin backend for the `ZedSellAuto` frontend. This repository intentionally con
 ## Quick start
 
 1. Copy `.env.example` to `.env`
-2. Create PostgreSQL and Redis services
-3. Run:
+2. Start PostgreSQL, Redis, and the API in Docker Desktop:
+
+```powershell
+docker compose up -d --build
+```
+
+3. Or run the API locally against Docker PostgreSQL/Redis:
 
 ```powershell
 go mod tidy
@@ -36,7 +41,7 @@ go run ./cmd/api
 Suggested frontend env:
 
 ```env
-NEXT_PUBLIC_API_BASE_URL=http://localhost:8080/api/v1
+NEXT_PUBLIC_API_BASE_URL=http://localhost:18081/api/v1
 ```
 
 ## Key endpoints
@@ -58,4 +63,3 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:8080/api/v1
 - `POST /api/v1/leads/test-drives`
 - `POST /api/v1/leads/inquiries`
 - `POST /api/v1/leads/finance`
-
