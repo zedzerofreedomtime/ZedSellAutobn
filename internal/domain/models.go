@@ -104,3 +104,24 @@ type HomePayload struct {
 	Categories       []VehicleCategory `json:"categories"`
 	FeaturedPost     *BlogPost         `json:"featuredPost,omitempty"`
 }
+
+type SellerVehicleSubmissionInput struct {
+	Brand         string
+	Model         string
+	Year          int
+	PriceTHB      int64
+	Location      string
+	MileageKM     int
+	Transmission  string
+	FuelType      string
+	DriveTrain    string
+	Engine        string
+	ExteriorColor string
+	InteriorColor string
+	OwnerSummary  string
+	SellerName    string
+	Phone         string
+	Email         string
+	Description   string
+	ImageNames    []string
+}

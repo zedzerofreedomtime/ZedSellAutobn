@@ -46,6 +46,8 @@ func NewRouter(cfg config.Config, services *service.Services) *gin.Engine {
 		api.POST("/leads/test-drives", handler.createTestDrive)
 		api.POST("/leads/inquiries", handler.createInquiry)
 		api.POST("/leads/finance", handler.createFinance)
+
+		api.POST("/seller/vehicles", handler.createSellerVehicle)
 	}
 
 	router.NoRoute(func(c *gin.Context) {

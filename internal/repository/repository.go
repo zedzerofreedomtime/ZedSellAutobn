@@ -402,7 +402,7 @@ func (r *Repository) RemoveFavorite(ctx context.Context, userID, vehicleID strin
 func (r *Repository) CreateOffer(ctx context.Context, vehicleID, userID, fullName, email, phone string, amount int64, note string) error {
 	_, err := r.db.Exec(ctx, `
 		INSERT INTO lead_offers (vehicle_id, user_id, full_name, email, phone, offer_amount_thb, note)
-		VALUES ($1, NULLIF($2, ''), $3, $4, $5, $6, $7)
+		VALUES ($1, NULLIF($2, '')::uuid, $3, $4, $5, $6, $7)
 	`, vehicleID, userID, fullName, strings.ToLower(email), phone, amount, note)
 	return err
 }
@@ -410,7 +410,7 @@ func (r *Repository) CreateOffer(ctx context.Context, vehicleID, userID, fullNam
 func (r *Repository) CreateTestDrive(ctx context.Context, vehicleID, userID, fullName, email, phone string, preferredAt time.Time, note string) error {
 	_, err := r.db.Exec(ctx, `
 		INSERT INTO lead_test_drives (vehicle_id, user_id, full_name, email, phone, preferred_at, note)
-		VALUES ($1, NULLIF($2, ''), $3, $4, $5, $6, $7)
+		VALUES ($1, NULLIF($2, '')::uuid, $3, $4, $5, $6, $7)
 	`, vehicleID, userID, fullName, strings.ToLower(email), phone, preferredAt, note)
 	return err
 }
@@ -418,7 +418,7 @@ func (r *Repository) CreateTestDrive(ctx context.Context, vehicleID, userID, ful
 func (r *Repository) CreateInquiry(ctx context.Context, vehicleID, userID, fullName, email, phone, message, channel string) error {
 	_, err := r.db.Exec(ctx, `
 		INSERT INTO lead_inquiries (vehicle_id, user_id, full_name, email, phone, message, channel)
-		VALUES ($1, NULLIF($2, ''), $3, $4, $5, $6, $7)
+		VALUES ($1, NULLIF($2, '')::uuid, $3, $4, $5, $6, $7)
 	`, vehicleID, userID, fullName, strings.ToLower(email), phone, message, channel)
 	return err
 }
@@ -426,9 +426,35 @@ func (r *Repository) CreateInquiry(ctx context.Context, vehicleID, userID, fullN
 func (r *Repository) CreateFinanceApplication(ctx context.Context, vehicleID, userID, fullName, email, phone string, downPercent float64, loanTerm int, creditBand string, income int64) error {
 	_, err := r.db.Exec(ctx, `
 		INSERT INTO finance_applications (vehicle_id, user_id, full_name, email, phone, down_payment_percent, loan_term_months, credit_band, monthly_income_thb)
-		VALUES ($1, NULLIF($2, ''), $3, $4, $5, $6, $7, $8, $9)
+		VALUES ($1, NULLIF($2, '')::uuid, $3, $4, $5, $6, $7, $8, $9)
 	`, vehicleID, userID, fullName, strings.ToLower(email), phone, downPercent, loanTerm, creditBand, income)
 	return err
+}
+
+func (r *Repository) CreateSellerVehicleSubmission(ctx context.Context, userID string, input domain.SellerVehicleSubmissionInput) (string, error) {
+	imageNames, err := json.Marshal(input.ImageNames)
+	if err != nil {
+		return "", err
+	}
+
+	var id string
+	err = r.db.QueryRow(ctx, `
+		INSERT INTO seller_vehicle_submissions (
+			user_id, brand, model, year, price_thb, location, mileage_km, transmission, fuel_type,
+			drive_train, engine, exterior_color, interior_color, owner_summary, seller_name, phone,
+			email, description, image_names
+		)
+		VALUES (
+			NULLIF($1, '')::uuid, $2, $3, $4, $5, $6, $7, $8, $9,
+			$10, $11, $12, $13, $14, $15, $16,
+			$17, $18, $19
+		)
+		RETURNING id
+	`, userID, input.Brand, input.Model, input.Year, input.PriceTHB, input.Location, input.MileageKM,
+		input.Transmission, input.FuelType, input.DriveTrain, input.Engine, input.ExteriorColor,
+		input.InteriorColor, input.OwnerSummary, input.SellerName, input.Phone, strings.ToLower(input.Email),
+		input.Description, imageNames).Scan(&id)
+	return id, err
 }
 
 type scanner interface {

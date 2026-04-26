@@ -284,6 +284,11 @@ func (s *Services) CreateFinanceApplication(ctx context.Context, token, vehicleI
 	return s.repo.CreateFinanceApplication(ctx, vehicleID, userID, fullName, email, phone, downPercent, loanTerm, creditBand, income)
 }
 
+func (s *Services) CreateSellerVehicleSubmission(ctx context.Context, token string, input domain.SellerVehicleSubmissionInput) (string, error) {
+	userID, _ := s.optionalUserID(token)
+	return s.repo.CreateSellerVehicleSubmission(ctx, userID, input)
+}
+
 func (s *Services) Health(ctx context.Context) map[string]string {
 	return map[string]string{
 		"status": "ok",

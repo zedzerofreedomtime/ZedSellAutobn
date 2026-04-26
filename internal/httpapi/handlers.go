@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"zedsellauto/internal/domain"
 	"zedsellauto/internal/service"
 )
 
@@ -59,6 +60,27 @@ type financeRequest struct {
 	LoanTermMonths     int     `json:"loanTermMonths" binding:"required"`
 	CreditBand         string  `json:"creditBand" binding:"required"`
 	MonthlyIncomeTHB   int64   `json:"monthlyIncomeTHB" binding:"required"`
+}
+
+type sellerVehicleRequest struct {
+	Brand         string   `json:"brand" binding:"required"`
+	Model         string   `json:"model" binding:"required"`
+	Year          int      `json:"year" binding:"required"`
+	PriceTHB      int64    `json:"priceTHB" binding:"required"`
+	Location      string   `json:"location" binding:"required"`
+	MileageKM     int      `json:"mileageKM" binding:"required"`
+	Transmission  string   `json:"transmission"`
+	FuelType      string   `json:"fuelType"`
+	DriveTrain    string   `json:"driveTrain"`
+	Engine        string   `json:"engine"`
+	ExteriorColor string   `json:"exteriorColor"`
+	InteriorColor string   `json:"interiorColor"`
+	OwnerSummary  string   `json:"ownerSummary"`
+	SellerName    string   `json:"sellerName" binding:"required"`
+	Phone         string   `json:"phone" binding:"required"`
+	Email         string   `json:"email" binding:"required,email"`
+	Description   string   `json:"description"`
+	ImageNames    []string `json:"imageNames"`
 }
 
 func (h *handler) health(c *gin.Context) {
@@ -260,4 +282,39 @@ func (h *handler) createFinance(c *gin.Context) {
 		return
 	}
 	c.Status(http.StatusCreated)
+}
+
+func (h *handler) createSellerVehicle(c *gin.Context) {
+	var req sellerVehicleRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	id, err := h.services.CreateSellerVehicleSubmission(c.Request.Context(), bearerToken(c), domain.SellerVehicleSubmissionInput{
+		Brand:         req.Brand,
+		Model:         req.Model,
+		Year:          req.Year,
+		PriceTHB:      req.PriceTHB,
+		Location:      req.Location,
+		MileageKM:     req.MileageKM,
+		Transmission:  req.Transmission,
+		FuelType:      req.FuelType,
+		DriveTrain:    req.DriveTrain,
+		Engine:        req.Engine,
+		ExteriorColor: req.ExteriorColor,
+		InteriorColor: req.InteriorColor,
+		OwnerSummary:  req.OwnerSummary,
+		SellerName:    req.SellerName,
+		Phone:         req.Phone,
+		Email:         req.Email,
+		Description:   req.Description,
+		ImageNames:    req.ImageNames,
+	})
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"id": id, "status": "pending"})
 }

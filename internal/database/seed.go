@@ -7,6 +7,10 @@ import (
 )
 
 const seedSQL = `
+INSERT INTO users (email, password_hash, full_name, role) VALUES
+('admin@zedauto.local', '$2a$10$atVaITTed2yCBuCSbmYx4eY4Q3k40yJDZ7XW4s7zzXSr82ZH/2eHq', 'Zed Auto Admin', 'admin')
+ON CONFLICT (email) DO NOTHING;
+
 INSERT INTO vehicle_categories (slug, title, description, image_url, sort_order) VALUES
 ('all', 'รถทั้งหมด', 'รวมรถมือสองคัดเกรดทุกประเภทจาก Zed Auto', 'https://images.unsplash.com/photo-1549924231-f129b911e442?auto=format&fit=crop&w=1200&q=80', 0),
 ('suv', 'SUV', 'รถอเนกประสงค์ นั่งสบาย พื้นที่เยอะ เหมาะกับครอบครัว', 'https://images.unsplash.com/photo-1519641471654-76ce0107ad1b?auto=format&fit=crop&w=1200&q=80', 1),

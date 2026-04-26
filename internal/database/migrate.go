@@ -177,6 +177,31 @@ CREATE TABLE IF NOT EXISTS finance_applications (
   monthly_income_thb BIGINT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS seller_vehicle_submissions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id),
+  brand TEXT NOT NULL,
+  model TEXT NOT NULL,
+  year INT NOT NULL,
+  price_thb BIGINT NOT NULL,
+  location TEXT NOT NULL,
+  mileage_km INT NOT NULL,
+  transmission TEXT NOT NULL DEFAULT '',
+  fuel_type TEXT NOT NULL DEFAULT '',
+  drive_train TEXT NOT NULL DEFAULT '',
+  engine TEXT NOT NULL DEFAULT '',
+  exterior_color TEXT NOT NULL DEFAULT '',
+  interior_color TEXT NOT NULL DEFAULT '',
+  owner_summary TEXT NOT NULL DEFAULT '',
+  seller_name TEXT NOT NULL,
+  phone TEXT NOT NULL,
+  email TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  image_names JSONB NOT NULL DEFAULT '[]'::jsonb,
+  status TEXT NOT NULL DEFAULT 'pending',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 `
 
 func Migrate(ctx context.Context, db *pgxpool.Pool) error {

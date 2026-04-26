@@ -77,3 +77,4 @@ Database: zedsellauto
 - `POST /api/v1/leads/test-drives`
 - `POST /api/v1/leads/inquiries`
 - `POST /api/v1/leads/finance`
+- `POST /api/v1/seller/vehicles`
