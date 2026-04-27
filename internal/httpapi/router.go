@@ -48,6 +48,15 @@ func NewRouter(cfg config.Config, services *service.Services) *gin.Engine {
 		api.POST("/leads/finance", handler.createFinance)
 
 		api.POST("/seller/vehicles", handler.createSellerVehicle)
+		api.GET("/seller/valuations", handler.sellerValuations)
+		api.POST("/seller/valuations", handler.createSellerValuation)
+		api.POST("/seller/valuations/:id/messages", handler.addSellerValuationMessage)
+		api.POST("/seller/valuations/:id/publish", handler.publishSellerValuation)
+		api.GET("/seller/listings", handler.sellerListings)
+		api.GET("/seller/listings/:id", handler.sellerListingDetail)
+
+		api.POST("/admin/valuations/:id/messages", handler.addAdminValuationMessage)
+		api.POST("/admin/valuations/:id/assessment", handler.sendAdminValuationAssessment)
 	}
 
 	router.NoRoute(func(c *gin.Context) {

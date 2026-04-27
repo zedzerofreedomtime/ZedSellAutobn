@@ -81,6 +81,27 @@ type sellerVehicleRequest struct {
 	Email         string   `json:"email" binding:"required,email"`
 	Description   string   `json:"description"`
 	ImageNames    []string `json:"imageNames"`
+	ImageURLs     []string `json:"imageUrls"`
+}
+
+type valuationRequest struct {
+	Contact domain.ValuationContactInput `json:"contact" binding:"required"`
+	Vehicle domain.ValuationVehicleInput `json:"vehicle" binding:"required"`
+}
+
+type valuationMessageRequest struct {
+	Text string `json:"text" binding:"required"`
+}
+
+type valuationAssessmentRequest struct {
+	MarketPriceTHB          int64  `json:"marketPriceTHB" binding:"required"`
+	DealerBuyPriceTHB       int64  `json:"dealerBuyPriceTHB" binding:"required"`
+	RecommendedListPriceTHB int64  `json:"recommendedListPriceTHB" binding:"required"`
+	Note                    string `json:"note" binding:"required"`
+}
+
+type publishValuationRequest struct {
+	AskingPriceTHB int64 `json:"askingPriceTHB" binding:"required"`
 }
 
 func (h *handler) health(c *gin.Context) {
@@ -291,7 +312,7 @@ func (h *handler) createSellerVehicle(c *gin.Context) {
 		return
 	}
 
-	id, err := h.services.CreateSellerVehicleSubmission(c.Request.Context(), bearerToken(c), domain.SellerVehicleSubmissionInput{
+	result, err := h.services.CreateSellerVehicleSubmission(c.Request.Context(), bearerToken(c), domain.SellerVehicleSubmissionInput{
 		Brand:         req.Brand,
 		Model:         req.Model,
 		Year:          req.Year,
@@ -310,11 +331,118 @@ func (h *handler) createSellerVehicle(c *gin.Context) {
 		Email:         req.Email,
 		Description:   req.Description,
 		ImageNames:    req.ImageNames,
+		ImageURLs:     req.ImageURLs,
 	})
 	if err != nil {
 		handleError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"id": id, "status": "pending"})
+	c.JSON(http.StatusCreated, result)
+}
+
+func (h *handler) sellerValuations(c *gin.Context) {
+	payload, err := h.services.SellerValuations(c.Request.Context())
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"requests": payload})
+}
+
+func (h *handler) createSellerValuation(c *gin.Context) {
+	var req valuationRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	payload, err := h.services.CreateSellerValuation(c.Request.Context(), bearerToken(c), domain.CreateValuationInput{
+		Contact: req.Contact,
+		Vehicle: req.Vehicle,
+	})
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	c.JSON(http.StatusCreated, payload)
+}
+
+func (h *handler) addSellerValuationMessage(c *gin.Context) {
+	var req valuationMessageRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	payload, err := h.services.AddSellerValuationMessage(c.Request.Context(), c.Param("id"), req.Text)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, payload)
+}
+
+func (h *handler) addAdminValuationMessage(c *gin.Context) {
+	var req valuationMessageRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	payload, err := h.services.AddAdminValuationMessage(c.Request.Context(), c.Param("id"), req.Text)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, payload)
+}
+
+func (h *handler) sendAdminValuationAssessment(c *gin.Context) {
+	var req valuationAssessmentRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	payload, err := h.services.SendAdminValuationAssessment(c.Request.Context(), c.Param("id"), domain.ValuationAssessment{
+		MarketPriceTHB:          req.MarketPriceTHB,
+		DealerBuyPriceTHB:       req.DealerBuyPriceTHB,
+		RecommendedListPriceTHB: req.RecommendedListPriceTHB,
+		Note:                    req.Note,
+		EstimatedAt:             time.Now().UTC().Format(time.RFC3339),
+	})
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, payload)
+}
+
+func (h *handler) publishSellerValuation(c *gin.Context) {
+	var req publishValuationRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	payload, err := h.services.PublishSellerValuation(c.Request.Context(), c.Param("id"), req.AskingPriceTHB)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, payload)
+}
+
+func (h *handler) sellerListings(c *gin.Context) {
+	payload, err := h.services.SellerListings(c.Request.Context(), c.Query("category"))
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"listings": payload})
+}
+
+func (h *handler) sellerListingDetail(c *gin.Context) {
+	payload, err := h.services.SellerListingDetail(c.Request.Context(), c.Param("id"))
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, payload)
 }

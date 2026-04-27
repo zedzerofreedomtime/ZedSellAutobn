@@ -202,6 +202,69 @@ CREATE TABLE IF NOT EXISTS seller_vehicle_submissions (
   status TEXT NOT NULL DEFAULT 'pending',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE seller_vehicle_submissions
+  ADD COLUMN IF NOT EXISTS image_urls JSONB NOT NULL DEFAULT '[]'::jsonb;
+
+CREATE TABLE IF NOT EXISTS seller_valuation_requests (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id),
+  status TEXT NOT NULL DEFAULT 'pending',
+  vehicle JSONB NOT NULL,
+  contact JSONB NOT NULL,
+  preliminary_assessment JSONB NOT NULL,
+  final_assessment JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS seller_valuation_messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  request_id UUID NOT NULL REFERENCES seller_valuation_requests(id) ON DELETE CASCADE,
+  sender TEXT NOT NULL,
+  text TEXT NOT NULL,
+  assessment JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS seller_listings (
+  id TEXT PRIMARY KEY DEFAULT ('seller-listing-' || gen_random_uuid()::text),
+  source_request_id UUID REFERENCES seller_valuation_requests(id) ON DELETE SET NULL,
+  source_submission_id UUID REFERENCES seller_vehicle_submissions(id) ON DELETE SET NULL,
+  status TEXT NOT NULL DEFAULT 'published',
+  category_slug TEXT NOT NULL DEFAULT 'sedan' REFERENCES vehicle_categories(slug),
+  title TEXT NOT NULL,
+  price_thb BIGINT NOT NULL,
+  image_urls JSONB NOT NULL DEFAULT '[]'::jsonb,
+  created_by_email TEXT NOT NULL DEFAULT '',
+  vehicle JSONB NOT NULL,
+  contact JSONB NOT NULL,
+  listed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS seller_listings_source_request_unique
+  ON seller_listings(source_request_id)
+  WHERE source_request_id IS NOT NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS seller_listings_source_submission_unique
+  ON seller_listings(source_submission_id)
+  WHERE source_submission_id IS NOT NULL;
+
+ALTER TABLE lead_offers
+  ALTER COLUMN vehicle_id DROP NOT NULL,
+  ADD COLUMN IF NOT EXISTS seller_listing_id TEXT REFERENCES seller_listings(id);
+
+ALTER TABLE lead_test_drives
+  ALTER COLUMN vehicle_id DROP NOT NULL,
+  ADD COLUMN IF NOT EXISTS seller_listing_id TEXT REFERENCES seller_listings(id);
+
+ALTER TABLE lead_inquiries
+  ALTER COLUMN vehicle_id DROP NOT NULL,
+  ADD COLUMN IF NOT EXISTS seller_listing_id TEXT REFERENCES seller_listings(id);
+
+ALTER TABLE finance_applications
+  ALTER COLUMN vehicle_id DROP NOT NULL,
+  ADD COLUMN IF NOT EXISTS seller_listing_id TEXT REFERENCES seller_listings(id);
 `
 
 func Migrate(ctx context.Context, db *pgxpool.Pool) error {

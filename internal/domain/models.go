@@ -124,4 +124,92 @@ type SellerVehicleSubmissionInput struct {
 	Email         string
 	Description   string
 	ImageNames    []string
+	ImageURLs     []string
+}
+
+type SellerVehicleSubmissionResult struct {
+	ID        string `json:"id"`
+	ListingID string `json:"listingId"`
+	Status    string `json:"status"`
+}
+
+type ValuationVehicleInput struct {
+	Brand            string `json:"brand"`
+	Model            string `json:"model"`
+	Year             string `json:"year"`
+	ExpectedPriceTHB string `json:"expectedPriceTHB"`
+	Location         string `json:"location"`
+	MileageKM        string `json:"mileageKM"`
+	Transmission     string `json:"transmission"`
+	FuelType         string `json:"fuelType"`
+	DriveTrain       string `json:"driveTrain"`
+	Engine           string `json:"engine"`
+	ExteriorColor    string `json:"exteriorColor"`
+	InteriorColor    string `json:"interiorColor"`
+	OwnerSummary     string `json:"ownerSummary"`
+	ConditionSummary string `json:"conditionSummary"`
+	Description      string `json:"description"`
+}
+
+type ValuationContactInput struct {
+	SellerName string `json:"sellerName"`
+	Phone      string `json:"phone"`
+	Email      string `json:"email"`
+}
+
+type ValuationAssessment struct {
+	MarketPriceTHB          int64  `json:"marketPriceTHB"`
+	DealerBuyPriceTHB       int64  `json:"dealerBuyPriceTHB"`
+	RecommendedListPriceTHB int64  `json:"recommendedListPriceTHB"`
+	Note                    string `json:"note"`
+	EstimatedAt             string `json:"estimatedAt"`
+}
+
+type ValuationMessage struct {
+	ID         string               `json:"id"`
+	Sender     string               `json:"sender"`
+	Text       string               `json:"text"`
+	CreatedAt  string               `json:"createdAt"`
+	Assessment *ValuationAssessment `json:"assessment,omitempty"`
+}
+
+type ValuationListing struct {
+	ID              string `json:"id"`
+	ListedAt        string `json:"listedAt"`
+	PriceTHB        int64  `json:"priceTHB"`
+	SourceRequestID string `json:"sourceRequestId"`
+	Status          string `json:"status"`
+	Title           string `json:"title"`
+}
+
+type SellerListing struct {
+	ID              string                `json:"id"`
+	ListedAt        string                `json:"listedAt"`
+	PriceTHB        int64                 `json:"priceTHB"`
+	SourceRequestID string                `json:"sourceRequestId"`
+	Status          string                `json:"status"`
+	Title           string                `json:"title"`
+	CategorySlug    string                `json:"categorySlug,omitempty"`
+	Contact         ValuationContactInput `json:"contact"`
+	CreatedByEmail  string                `json:"createdByEmail,omitempty"`
+	ImageURLs       []string              `json:"imageUrls,omitempty"`
+	Vehicle         ValuationVehicleInput `json:"vehicle"`
+}
+
+type ValuationRequest struct {
+	ID                    string                `json:"id"`
+	CreatedAt             string                `json:"createdAt"`
+	UpdatedAt             string                `json:"updatedAt"`
+	Status                string                `json:"status"`
+	Vehicle               ValuationVehicleInput `json:"vehicle"`
+	Contact               ValuationContactInput `json:"contact"`
+	PreliminaryAssessment ValuationAssessment   `json:"preliminaryAssessment"`
+	FinalAssessment       *ValuationAssessment  `json:"finalAssessment,omitempty"`
+	Listing               *ValuationListing     `json:"listing,omitempty"`
+	Messages              []ValuationMessage    `json:"messages"`
+}
+
+type CreateValuationInput struct {
+	Contact ValuationContactInput `json:"contact"`
+	Vehicle ValuationVehicleInput `json:"vehicle"`
 }

@@ -284,9 +284,82 @@ func (s *Services) CreateFinanceApplication(ctx context.Context, token, vehicleI
 	return s.repo.CreateFinanceApplication(ctx, vehicleID, userID, fullName, email, phone, downPercent, loanTerm, creditBand, income)
 }
 
-func (s *Services) CreateSellerVehicleSubmission(ctx context.Context, token string, input domain.SellerVehicleSubmissionInput) (string, error) {
+func (s *Services) CreateSellerVehicleSubmission(ctx context.Context, token string, input domain.SellerVehicleSubmissionInput) (domain.SellerVehicleSubmissionResult, error) {
 	userID, _ := s.optionalUserID(token)
-	return s.repo.CreateSellerVehicleSubmission(ctx, userID, input)
+	result, err := s.repo.CreateSellerVehicleSubmission(ctx, userID, input)
+	if err != nil {
+		return domain.SellerVehicleSubmissionResult{}, err
+	}
+	return result, s.invalidateVehicleCache(ctx)
+}
+
+func (s *Services) SellerValuations(ctx context.Context) ([]domain.ValuationRequest, error) {
+	return s.repo.ListValuationRequests(ctx)
+}
+
+func (s *Services) CreateSellerValuation(ctx context.Context, token string, input domain.CreateValuationInput) (domain.ValuationRequest, error) {
+	userID, _ := s.optionalUserID(token)
+	preliminary := calculatePreliminaryAssessment(input.Vehicle)
+	return s.repo.CreateValuationRequest(ctx, userID, input, preliminary)
+}
+
+func (s *Services) AddSellerValuationMessage(ctx context.Context, requestID, text string) (domain.ValuationRequest, error) {
+	if strings.TrimSpace(text) == "" {
+		return domain.ValuationRequest{}, repository.ErrNotFound
+	}
+	if _, err := s.repo.AddValuationMessage(ctx, requestID, "seller", strings.TrimSpace(text), nil); err != nil {
+		return domain.ValuationRequest{}, err
+	}
+	return s.repo.GetValuationRequest(ctx, requestID)
+}
+
+func (s *Services) AddAdminValuationMessage(ctx context.Context, requestID, text string) (domain.ValuationRequest, error) {
+	if strings.TrimSpace(text) == "" {
+		return domain.ValuationRequest{}, repository.ErrNotFound
+	}
+	if _, err := s.repo.AddValuationMessage(ctx, requestID, "admin", strings.TrimSpace(text), nil); err != nil {
+		return domain.ValuationRequest{}, err
+	}
+	return s.repo.GetValuationRequest(ctx, requestID)
+}
+
+func (s *Services) SendAdminValuationAssessment(ctx context.Context, requestID string, assessment domain.ValuationAssessment) (domain.ValuationRequest, error) {
+	if assessment.EstimatedAt == "" {
+		assessment.EstimatedAt = time.Now().UTC().Format(time.RFC3339)
+	}
+	if err := s.repo.SetValuationAssessment(ctx, requestID, assessment); err != nil {
+		return domain.ValuationRequest{}, err
+	}
+	if _, err := s.repo.AddValuationMessage(ctx, requestID, "admin", buildAssessmentMessage(assessment), &assessment); err != nil {
+		return domain.ValuationRequest{}, err
+	}
+	return s.repo.GetValuationRequest(ctx, requestID)
+}
+
+func (s *Services) PublishSellerValuation(ctx context.Context, requestID string, askingPriceTHB int64) (domain.ValuationRequest, error) {
+	listing, err := s.repo.CreateSellerListingForValuation(ctx, requestID, askingPriceTHB)
+	if err != nil {
+		return domain.ValuationRequest{}, err
+	}
+	message := fmt.Sprintf("Published %s at %s.", listing.Title, formatTHB(listing.PriceTHB))
+	if _, err := s.repo.AddValuationMessage(ctx, requestID, "seller", message, nil); err != nil {
+		return domain.ValuationRequest{}, err
+	}
+	if err := s.invalidateVehicleCache(ctx); err != nil {
+		return domain.ValuationRequest{}, err
+	}
+	return s.repo.GetValuationRequest(ctx, requestID)
+}
+
+func (s *Services) SellerListings(ctx context.Context, category string) ([]domain.SellerListing, error) {
+	if category == "all" {
+		category = ""
+	}
+	return s.repo.ListSellerListings(ctx, category)
+}
+
+func (s *Services) SellerListingDetail(ctx context.Context, listingID string) (domain.SellerListing, error) {
+	return s.repo.GetSellerListingByID(ctx, listingID)
 }
 
 func (s *Services) Health(ctx context.Context) map[string]string {
@@ -341,6 +414,76 @@ func (s *Services) optionalUserID(token string) (string, error) {
 		return "", nil
 	}
 	return s.parseToken(token)
+}
+
+func calculatePreliminaryAssessment(vehicle domain.ValuationVehicleInput) domain.ValuationAssessment {
+	expectedPrice := parseFormNumber(vehicle.ExpectedPriceTHB)
+	mileage := parseFormNumber(vehicle.MileageKM)
+	year := parseFormNumber(vehicle.Year)
+	age := time.Now().Year() - year
+	if age < 0 {
+		age = 0
+	}
+
+	mileageFactor := 1.0
+	if mileage > 160000 {
+		mileageFactor = 0.9
+	} else if mileage > 90000 {
+		mileageFactor = 0.95
+	}
+
+	ageFactor := 1 - float64(age)*0.012
+	if ageFactor < 0.86 {
+		ageFactor = 0.86
+	}
+
+	basePrice := expectedPrice
+	if basePrice < 300000 {
+		basePrice = 300000
+	}
+	marketPriceTHB := roundToThousand(float64(basePrice) * ageFactor * mileageFactor)
+	dealerBuyPriceTHB := roundToThousand(float64(marketPriceTHB) * 0.82)
+	recommendedListPriceTHB := roundToThousand(float64(marketPriceTHB) * 0.94)
+
+	return domain.ValuationAssessment{
+		MarketPriceTHB:          marketPriceTHB,
+		DealerBuyPriceTHB:       dealerBuyPriceTHB,
+		RecommendedListPriceTHB: recommendedListPriceTHB,
+		Note:                    "Preliminary estimate from submitted vehicle data. Use it as a starting point for negotiation.",
+		EstimatedAt:             time.Now().UTC().Format(time.RFC3339),
+	}
+}
+
+func buildAssessmentMessage(assessment domain.ValuationAssessment) string {
+	return strings.Join([]string{
+		"Admin assessment completed.",
+		fmt.Sprintf("Estimated market price: %s", formatTHB(assessment.MarketPriceTHB)),
+		fmt.Sprintf("Dealer buy price: %s", formatTHB(assessment.DealerBuyPriceTHB)),
+		fmt.Sprintf("Recommended listing price: %s", formatTHB(assessment.RecommendedListPriceTHB)),
+		assessment.Note,
+	}, "\n")
+}
+
+func formatTHB(value int64) string {
+	return fmt.Sprintf("THB %d", value)
+}
+
+func parseFormNumber(value string) int {
+	normalized := strings.Map(func(r rune) rune {
+		if r >= '0' && r <= '9' {
+			return r
+		}
+		return -1
+	}, value)
+	parsed, err := strconv.Atoi(normalized)
+	if err != nil {
+		return 0
+	}
+	return parsed
+}
+
+func roundToThousand(value float64) int64 {
+	return int64(value/1000+0.5) * 1000
 }
 
 func (s *Services) invalidateVehicleCache(ctx context.Context) error {
