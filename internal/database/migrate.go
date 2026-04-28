@@ -265,6 +265,25 @@ ALTER TABLE lead_inquiries
 ALTER TABLE finance_applications
   ALTER COLUMN vehicle_id DROP NOT NULL,
   ADD COLUMN IF NOT EXISTS seller_listing_id TEXT REFERENCES seller_listings(id);
+
+CREATE TABLE IF NOT EXISTS market_used_car_prices (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  source TEXT NOT NULL,
+  source_url TEXT NOT NULL UNIQUE,
+  brand TEXT NOT NULL,
+  model TEXT NOT NULL,
+  raw_model TEXT NOT NULL,
+  model_year INT NOT NULL,
+  model_month INT NOT NULL DEFAULT 0,
+  monthly_payment_thb INT NOT NULL DEFAULT 0,
+  price_min_thb BIGINT NOT NULL,
+  price_max_thb BIGINT NOT NULL,
+  imported_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS market_used_car_prices_brand_model_year_idx
+  ON market_used_car_prices (LOWER(brand), LOWER(model), model_year);
 `
 
 func Migrate(ctx context.Context, db *pgxpool.Pool) error {

@@ -213,3 +213,26 @@ type CreateValuationInput struct {
 	Contact ValuationContactInput `json:"contact"`
 	Vehicle ValuationVehicleInput `json:"vehicle"`
 }
+
+type MarketUsedCarPrice struct {
+	ID                string    `json:"id"`
+	Source            string    `json:"source"`
+	SourceURL         string    `json:"sourceUrl"`
+	Brand             string    `json:"brand"`
+	Model             string    `json:"model"`
+	RawModel          string    `json:"rawModel"`
+	ModelYear         int       `json:"modelYear"`
+	ModelMonth        int       `json:"modelMonth"`
+	MonthlyPaymentTHB int       `json:"monthlyPaymentTHB"`
+	PriceMinTHB       int64     `json:"priceMinTHB"`
+	PriceMaxTHB       int64     `json:"priceMaxTHB"`
+	ImportedAt        time.Time `json:"importedAt"`
+	UpdatedAt         time.Time `json:"updatedAt"`
+}
+
+type MarketUsedCarPriceFilter struct {
+	Brand string
+	Model string
+	Year  int
+	Limit int
+}

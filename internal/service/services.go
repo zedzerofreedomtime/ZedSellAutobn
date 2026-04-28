@@ -362,6 +362,10 @@ func (s *Services) SellerListingDetail(ctx context.Context, listingID string) (d
 	return s.repo.GetSellerListingByID(ctx, listingID)
 }
 
+func (s *Services) MarketUsedCarPrices(ctx context.Context, filter domain.MarketUsedCarPriceFilter) ([]domain.MarketUsedCarPrice, error) {
+	return s.repo.ListMarketUsedCarPrices(ctx, filter)
+}
+
 func (s *Services) Health(ctx context.Context) map[string]string {
 	return map[string]string{
 		"status": "ok",

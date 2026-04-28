@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -445,4 +446,21 @@ func (h *handler) sellerListingDetail(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, payload)
+}
+
+func (h *handler) marketUsedCarPrices(c *gin.Context) {
+	year, _ := strconv.Atoi(c.Query("year"))
+	limit, _ := strconv.Atoi(c.Query("limit"))
+
+	payload, err := h.services.MarketUsedCarPrices(c.Request.Context(), domain.MarketUsedCarPriceFilter{
+		Brand: c.Query("brand"),
+		Model: c.Query("model"),
+		Year:  year,
+		Limit: limit,
+	})
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"prices": payload})
 }

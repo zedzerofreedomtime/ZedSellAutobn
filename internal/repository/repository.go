@@ -812,6 +812,102 @@ func (r *Repository) GetSellerListingVehicleByID(ctx context.Context, listingID 
 	return sellerListingToVehicle(listing), nil
 }
 
+func (r *Repository) UpsertMarketUsedCarPrices(ctx context.Context, prices []domain.MarketUsedCarPrice) (int, error) {
+	if len(prices) == 0 {
+		return 0, nil
+	}
+
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback(ctx)
+
+	count := 0
+	for _, price := range prices {
+		commandTag, err := tx.Exec(ctx, `
+			INSERT INTO market_used_car_prices (
+				source, source_url, brand, model, raw_model, model_year, model_month,
+				monthly_payment_thb, price_min_thb, price_max_thb, imported_at, updated_at
+			)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
+			ON CONFLICT (source_url) DO UPDATE SET
+				source = EXCLUDED.source,
+				brand = EXCLUDED.brand,
+				model = EXCLUDED.model,
+				raw_model = EXCLUDED.raw_model,
+				model_year = EXCLUDED.model_year,
+				model_month = EXCLUDED.model_month,
+				monthly_payment_thb = EXCLUDED.monthly_payment_thb,
+				price_min_thb = EXCLUDED.price_min_thb,
+				price_max_thb = EXCLUDED.price_max_thb,
+				updated_at = NOW()
+		`, price.Source, price.SourceURL, price.Brand, price.Model, price.RawModel, price.ModelYear, price.ModelMonth,
+			price.MonthlyPaymentTHB, price.PriceMinTHB, price.PriceMaxTHB)
+		if err != nil {
+			return 0, err
+		}
+		count += int(commandTag.RowsAffected())
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
+func (r *Repository) ListMarketUsedCarPrices(ctx context.Context, filter domain.MarketUsedCarPriceFilter) ([]domain.MarketUsedCarPrice, error) {
+	limit := filter.Limit
+	if limit <= 0 || limit > 500 {
+		limit = 100
+	}
+
+	rows, err := r.db.Query(ctx, `
+		SELECT id, source, source_url, brand, model, raw_model, model_year, model_month,
+		       monthly_payment_thb, price_min_thb, price_max_thb, imported_at, updated_at
+		FROM market_used_car_prices
+		WHERE ($1 = '' OR LOWER(brand) = LOWER($1))
+		  AND ($2 = '' OR LOWER(model) LIKE '%' || LOWER($2) || '%')
+		  AND ($3 = 0 OR model_year = $3)
+		ORDER BY brand ASC, model ASC, model_year DESC, model_month DESC
+		LIMIT $4
+	`, strings.TrimSpace(filter.Brand), strings.TrimSpace(filter.Model), filter.Year, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []domain.MarketUsedCarPrice
+	for rows.Next() {
+		var item domain.MarketUsedCarPrice
+		if err := rows.Scan(
+			&item.ID,
+			&item.Source,
+			&item.SourceURL,
+			&item.Brand,
+			&item.Model,
+			&item.RawModel,
+			&item.ModelYear,
+			&item.ModelMonth,
+			&item.MonthlyPaymentTHB,
+			&item.PriceMinTHB,
+			&item.PriceMaxTHB,
+			&item.ImportedAt,
+			&item.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+	return items, rows.Err()
+}
+
+func (r *Repository) CountMarketUsedCarPrices(ctx context.Context) (int, error) {
+	var count int
+	err := r.db.QueryRow(ctx, `SELECT COUNT(*) FROM market_used_car_prices`).Scan(&count)
+	return count, err
+}
+
 type scanner interface {
 	Scan(dest ...any) error
 }
